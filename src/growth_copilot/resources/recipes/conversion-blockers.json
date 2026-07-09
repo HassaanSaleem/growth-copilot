@@ -1,0 +1,43 @@
+{
+  "name": "conversion-blockers",
+  "description": "Why do users who upload files never share them? One funnel exports the stalled and converted cohorts; both are then profiled and their behaviors compared automatically.",
+  "params": {"timeframe_days": "90"},
+  "tasks": [
+    {
+      "id": 1,
+      "tool": "funnel_analysis",
+      "args": {
+        "steps": ["workspace_created", "file_uploaded", "link_shared"],
+        "timeframe_days": "$timeframe_days",
+        "export_stalled_at_step": 2,
+        "export_converted": true,
+        "segment_name": "share_funnel"
+      },
+      "depends_on": []
+    },
+    {
+      "id": 2,
+      "tool": "segment_event_discovery",
+      "args": {"segment": {"$ref": 1, "field": "stalled_segment_name"}, "top_n": 12},
+      "depends_on": [1]
+    },
+    {
+      "id": 3,
+      "tool": "segment_event_discovery",
+      "args": {"segment": {"$ref": 1, "field": "converted_segment_name"}, "top_n": 12},
+      "depends_on": [1]
+    },
+    {
+      "id": 4,
+      "tool": "profile_segment",
+      "args": {"segment": {"$ref": 1, "field": "stalled_segment_name"}},
+      "depends_on": [1]
+    },
+    {
+      "id": 5,
+      "tool": "profile_segment",
+      "args": {"segment": {"$ref": 1, "field": "converted_segment_name"}},
+      "depends_on": [1]
+    }
+  ]
+}

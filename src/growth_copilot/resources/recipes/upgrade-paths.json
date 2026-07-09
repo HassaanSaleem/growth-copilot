@@ -1,0 +1,39 @@
+{
+  "name": "upgrade-paths",
+  "description": "How do users actually reach a paid plan? Defines the recent-upgraders segment, discovers their characteristic events, then maps the real navigation paths restricted to those events — a three-stage dependency chain with late-bound arguments.",
+  "params": {"timeframe_days": "90"},
+  "tasks": [
+    {
+      "id": 1,
+      "tool": "segment_definition",
+      "args": {
+        "name": "recent_upgraders",
+        "event_filters": [{"event": "plan_upgraded", "op": "at_least", "count": 1, "timeframe_days": "$timeframe_days"}]
+      },
+      "depends_on": []
+    },
+    {
+      "id": 2,
+      "tool": "segment_event_discovery",
+      "args": {"segment": {"$ref": 1, "field": "segment_name"}, "top_n": 12},
+      "depends_on": [1]
+    },
+    {
+      "id": 3,
+      "tool": "product_paths",
+      "args": {
+        "start_event": "account_created",
+        "end_event": "plan_upgraded",
+        "allowed_events": {"$ref": 2, "field": "event_names"},
+        "top_n": 8
+      },
+      "depends_on": [2]
+    },
+    {
+      "id": 4,
+      "tool": "journey_map",
+      "args": {"start_event": "file_uploaded", "end_event": "plan_upgraded"},
+      "depends_on": []
+    }
+  ]
+}

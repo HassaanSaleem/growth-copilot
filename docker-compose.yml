@@ -1,0 +1,24 @@
+services:
+  # HTTP API on http://localhost:8000. ANTHROPIC_API_KEY passes through from
+  # your shell but is optional: /recipes/{name}/run works without it.
+  # ./data is mounted so the DuckDB warehouse persists across containers.
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+
+  # Fully offline demo — seeds the deterministic warehouse into ./data and
+  # runs the conversion-blockers recipe. No API key involved.
+  #
+  #   docker compose --profile demo run --rm demo
+  demo:
+    profiles: ["demo"]
+    build: .
+    volumes:
+      - ./data:/app/data
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["growth-copilot seed && growth-copilot recipe conversion-blockers"]

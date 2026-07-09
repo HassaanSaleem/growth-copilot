@@ -1,0 +1,97 @@
+{
+  "tools": [
+    {
+      "name": "funnel_analysis",
+      "description": "Conversion funnel across an ordered list of events. Returns per-step users, conversion-from-start, and step-to-step loss. Set export_stalled_at_step/export_converted to persist the matching user cohorts as named segments for downstream tools.",
+      "args": {
+        "steps": "ordered list of event names (2-6)",
+        "timeframe_days": "lookback window in days (default 90)",
+        "conversion_window_days": "max days allowed between first and last step (default 14)",
+        "filters": "optional {property: value} user-profile filters",
+        "breakdown_property": "optional user property to break the funnel down by",
+        "export_stalled_at_step": "optional 1-based step index; exports users who reached this step but not the next as segment '<segment_name>_stalled' (result field: stalled_segment_name)",
+        "export_converted": "optional true; exports users who completed all steps as segment '<segment_name>_converted' (result field: converted_segment_name)",
+        "segment_name": "base name for exported segments (required with either export flag)"
+      },
+      "exports": "named user segments when export flags are set; downstream tasks reference them via {\"$ref\": <task_id>, \"field\": \"stalled_segment_name\"} or \"converted_segment_name\"",
+      "example": {"steps": ["workspace_created", "file_uploaded", "link_shared"], "timeframe_days": 90}
+    },
+    {
+      "name": "insight_query",
+      "description": "Metric over one or more events: unique users or event counts, optionally grouped by a user property or by week. The general-purpose 'how many / how often' tool.",
+      "args": {
+        "events": "list of event names",
+        "metric": "unique_users | event_count",
+        "group_by_property": "optional user property to group by",
+        "by_week": "optional true for a weekly time series",
+        "timeframe_days": "lookback window in days (default 90)",
+        "filters": "optional {property: value} user-profile filters"
+      },
+      "example": {"events": ["file_uploaded"], "metric": "unique_users", "group_by_property": "plan"}
+    },
+    {
+      "name": "segment_definition",
+      "description": "Create a named user segment from profile filters and/or event-behavior filters. Segments are referenced by name from discovery/profile tools.",
+      "args": {
+        "name": "segment name (snake_case)",
+        "filters": "optional {property: value} user-profile filters",
+        "event_filters": "optional list of {event, op: at_least|at_most, count, timeframe_days}"
+      },
+      "exports": "a named user segment",
+      "example": {"name": "power_uploaders", "event_filters": [{"event": "file_uploaded", "op": "at_least", "count": 10, "timeframe_days": 30}]}
+    },
+    {
+      "name": "segment_event_discovery",
+      "description": "Which events over- or under-index in a segment vs the whole population (lift analysis). The 'what do these users do differently' tool.",
+      "args": {
+        "segment": "segment name, or {\"$ref\": <task_id>, \"field\": \"stalled_segment_name\"} (or segment_name / converted_segment_name) to use a segment exported by an upstream task",
+        "top_n": "number of events to return (default 15)",
+        "timeframe_days": "lookback window in days (default 90)"
+      },
+      "example": {"segment": {"$ref": 1, "field": "stalled_segment_name"}, "top_n": 10}
+    },
+    {
+      "name": "profile_segment",
+      "description": "Profile a segment against the whole population: which user properties (plan, country, device, channel, company size) deviate meaningfully. The 'who are these users' tool.",
+      "args": {
+        "segment": "segment name, or {\"$ref\": <task_id>, \"field\": \"segment_name\"}",
+        "min_relative_change": "deviation threshold, default 0.3"
+      },
+      "example": {"segment": {"$ref": 2, "field": "segment_name"}}
+    },
+    {
+      "name": "product_paths",
+      "description": "The real navigation paths users take between a start and end event, compressed and ranked by user count. Restrict noise with allowed_events, or pass {\"$ref\": <task_id>} to use the events discovered by an upstream segment_event_discovery task.",
+      "args": {
+        "start_event": "path start event",
+        "end_event": "path end event",
+        "allowed_events": "optional list of event names, or {\"$ref\": <task_id>, \"field\": \"event_names\"}",
+        "top_n": "number of paths (default 10)",
+        "timeframe_days": "lookback window in days (default 90)"
+      },
+      "example": {"start_event": "account_created", "end_event": "plan_upgraded", "top_n": 5}
+    },
+    {
+      "name": "journey_map",
+      "description": "Layered journey graph between two events: per-step nodes with user counts, conversion and loss rates along the dominant paths. Optionally scoped to a segment.",
+      "args": {
+        "start_event": "journey start event",
+        "end_event": "journey end event",
+        "segment": "optional segment name or {\"$ref\": <task_id>, \"field\": \"segment_name\"}",
+        "timeframe_days": "lookback window in days (default 90)"
+      },
+      "example": {"start_event": "file_uploaded", "end_event": "plan_upgraded"}
+    },
+    {
+      "name": "funnel_breakdown",
+      "description": "Automated breakdown mining: runs the base funnel, then re-runs it broken down by every candidate user property, returning the property values with the largest positive lift (boosters) and negative lift (blockers) on conversion, ranked by impact = affected users x |lift|.",
+      "args": {
+        "steps": "ordered list of event names (2-6)",
+        "timeframe_days": "lookback window in days (default 90)",
+        "filters": "optional {property: value} scope filters",
+        "max_values_per_property": "default 8"
+      },
+      "example": {"steps": ["workspace_created", "file_uploaded"], "timeframe_days": 60}
+    }
+  ]
+}
